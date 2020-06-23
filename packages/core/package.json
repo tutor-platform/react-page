@@ -1,5 +1,5 @@
 {
-  "name": "@react-page/core",
+  "name": "@tutorbot/react-page-core",
   "version": "0.21.3",
   "main": "./lib/index.js",
   "module": "./lib-es/index.js",
