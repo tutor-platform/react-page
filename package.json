@@ -1,7 +1,8 @@
 {
   "private": true,
   "author": "ORY GmbH",
-  "license": "GNU Lesser General Public License v3.0",
+  "name": "react-page",
+  "license": "MIT",
   "devDependencies": {
     "@babel/cli": "7.2.0",
     "@babel/core": "7.2.0",
@@ -13,6 +14,8 @@
     "@material-ui/core": "^4.3.3",
     "@material-ui/icons": "^4.2.1",
     "@material-ui/styles": "^4.3.3",
+    "@semantic-release/changelog": "^5.0.1",
+    "@semantic-release/exec": "semantic-release/exec",
     "@types/jest": "^25.2.3",
     "@types/react-dom": "^16.9.3",
     "@typescript-eslint/eslint-plugin": "^3.1.0",
@@ -23,6 +26,7 @@
     "coveralls": "^3.0.2",
     "cross-env": "^5.2.0",
     "docsify": "^4.11.3",
+    "docsify-cli": "^4.4.1",
     "documentation": "^13.0.1",
     "enzyme": "^3.11.0",
     "enzyme-adapter-react-16": "1.7.1",
@@ -44,12 +48,13 @@
     "react-dom": "~16.9.0",
     "redux": "^3.6.0",
     "rimraf": "2.6.2",
-    "ts-jest": "^26.1.0",
-    "typescript": "~3.8.3",
+    "semantic-release": "^17.1.2",
+    "ts-jest": "^26.4.1",
+    "typescript": "~4.0.3",
     "unexpected": "^11.14.0"
   },
   "scripts": {
-    "start:docs": "docsify serve ./docs",
+    "start:docs": "docsify serve -p 3100 ./docs",
     "coveralls": "cat ./coverage/lcov.info | coveralls",
     "bootstrap": "lerna bootstrap",
     "build": "cross-env NODE_ENV=production lerna run build --stream",
@@ -57,12 +62,9 @@
     "build:watch": "cross-env NODE_ENV=development lerna run build:watch --parallel",
     "clean": "lerna run clean",
     "clean:lerna": "lerna clean --yes",
-    "docs:api": "cross-env NODE_ENV=development lerna run docs --stream",
-    "docs:guide": "npm-run-all start:docs",
     "lint": "eslint -c .eslintrc.js '*/**/*.{js,ts,tsx}'",
     "lint:watch": "npm-run-all watch:ts -- -c \"npm-run-all lint\"",
     "prettier": " prettier-tslint fix \"packages/**/src/**/*.(ts|tsx)\"",
-    "publish": "lerna publish",
     "start": "cross-env TSC_WATCHFILE=UseFsEventsWithFallbackDynamicPolling npm-run-all -p build:watch start:examples",
     "start:examples": "cross-env NODE_ENV=development lerna run start --stream",
     "test": "cross-env NODE_ENV=test jest --coverage",
@@ -71,7 +73,8 @@
     "postinstall": "npm-run-all clean bootstrap build:lib",
     "serve": "pushstate-server ./examples/build",
     "heroku-prebuild": "git init",
-    "heroku-postbuild": "npm-run-all build"
+    "heroku-postbuild": "npm-run-all build",
+    "semantic-release": "semantic-release"
   },
   "jest": {
     "setupFilesAfterEnv": [
@@ -94,9 +97,41 @@
     "testMatch": [
       "**/__tests__/*.+(ts|tsx)"
     ],
+    "modulePathIgnorePatterns": [
+      "/lib/",
+      "/lib-es/",
+      "/examples/"
+    ],
     "testPathIgnorePatterns": [
       "/node_modules/",
-      "/lib/"
+      "/lib/",
+      "/lib-es/",
+      "/examples/"
+    ],
+    "watchPathIgnorePatterns": [
+      "/node_modules/",
+      "/lib/",
+      "/lib-es/",
+      "/examples/"
+    ]
+  },
+  "version": "0.0.0-development",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/react-page/react-page.git"
+  },
+  "release": {
+    "plugins": [
+      "@semantic-release/commit-analyzer",
+      "@semantic-release/release-notes-generator",
+      [
+        "@semantic-release/exec",
+        {
+          "publishCmd": "yarn lerna publish --no-git-tag-version --no-git-reset --no-push --yes --dist-tag=${nextRelease.channel} --force-publish=* ${nextRelease.version}",
+          "addChannel": "npm dist-tag add ${nextRelease.version}@${nextRelease.channel}"
+        }
+      ],
+      "@semantic-release/github"
     ]
   }
 }

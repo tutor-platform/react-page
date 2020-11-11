@@ -1,18 +1,20 @@
-import { BackendFactory } from 'dnd-core';
 import { DragSource, DropTarget } from 'react-dnd';
+import { BackendFactory } from 'dnd-core';
+
 import { Actions } from './actions';
 import Editable from './components/Editable';
-import Editor, { createEmptyState, EditorProps } from './Editor';
+import Editor, { createEmptyState, CoreEditorProps, Languages } from './Editor';
 import { InitialChildrenDef } from './helper/createInitialChildren';
 import lazyLoad from './helper/lazyLoad';
 import sanitizeInitialChildren from './helper/sanitizeInitialChildren';
-import Provider, { useEditor } from './Provider';
+import Provider from './Provider';
 import { reducer } from './reducer';
 import { editable as editableReducer } from './reducer/editable';
 import { connect, ReduxContext, ReduxProvider } from './reduxConnect';
 import { Selectors } from './selector';
 import i18n from './service/i18n';
 import PluginService from './service/plugin';
+
 import {
   ContentPlugin,
   ContentPluginConfig,
@@ -25,6 +27,7 @@ import {
   PluginProps,
   Plugins,
 } from './service/plugin/classes';
+export * from './components/hooks';
 import {
   Cell,
   Content,
@@ -32,13 +35,17 @@ import {
   Layout,
   NativeFactory,
   Row,
+  SimplifiedModesProps,
 } from './types/editable';
 import { RootState } from './types/state';
+import { setAllSizesAndOptimize } from './reducer/editable/helper/setAllSizesAndOptimize';
+import { DisplayModes } from './actions/display';
 export { BackendFactory as DndBackend, DropTarget, DragSource };
 export {
+  setAllSizesAndOptimize,
   Migration,
   createEmptyState,
-  EditorProps,
+  CoreEditorProps,
   Plugin,
   Plugins,
   NativeFactory,
@@ -63,12 +70,15 @@ export {
   LayoutPlugin,
   Editor,
   reducer,
-  editableReducer,
+  editableReducer, // deprecated
   ReduxProvider,
   connect,
   ReduxContext,
+  Languages,
+  SimplifiedModesProps,
+  DisplayModes,
 };
 // newer api
-export { Provider, Editable, useEditor, lazyLoad };
+export { Provider, Editable, lazyLoad };
 
 export default Editor;

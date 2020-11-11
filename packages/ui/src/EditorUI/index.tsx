@@ -1,7 +1,7 @@
 import React from 'react';
 import DisplayModeToggle, { StickyNess } from '../DisplayModeToggle/index';
 import ThemeProvider from '../ThemeProvider';
-import Toolbar from '../Toolbar/index';
+import PluginDrawer from '../PluginDrawer/index';
 import Trash from '../Trash/index';
 
 export default React.memo(
@@ -11,13 +11,15 @@ export default React.memo(
       shouldStickToBottom: false,
       rightOffset: 0,
     },
+    hideEditorSidebar = false,
   }: {
     stickyNess?: StickyNess;
+    hideEditorSidebar?: boolean;
   }) => (
     <ThemeProvider>
       <Trash />
-      <DisplayModeToggle stickyNess={stickyNess} />
-      <Toolbar />
+      {!hideEditorSidebar && <DisplayModeToggle stickyNess={stickyNess} />}
+      <PluginDrawer />
     </ThemeProvider>
   )
 );

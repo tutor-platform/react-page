@@ -1,27 +1,36 @@
 import { FormControlLabel, Switch, Tooltip } from '@material-ui/core';
 import VisibleIcon from '@material-ui/icons/Visibility';
 import NonVisibleIcon from '@material-ui/icons/VisibilityOff';
-import { Actions, connect, Selectors } from '@react-page/core';
+import { useCell, useLang, useSetDraft } from '@react-page/core';
 import React from 'react';
-import { createStructuredSelector } from 'reselect';
 
-const DraftSwitch = ({ id, node, setDraft }) => {
+const DraftSwitch = ({ id, lang }: { id: string; lang?: string }) => {
+  const node = useCell(id);
+  const setDraft = useSetDraft();
+  const currentLang = useLang();
+  if (!node) {
+    return null;
+  }
+  const theLang = lang ?? currentLang;
+  const hasI18n = Boolean(node.isDraftI18n);
+  const isDraft = node?.isDraftI18n?.[theLang] ?? node?.isDraft; // fallback to legacy
+  const title = isDraft ? 'Content is hidden' : 'Content is visible';
   return node ? (
-    <Tooltip title={node.isDraft ? 'Content is draft' : 'Content is visible'}>
+    <Tooltip title={title + (hasI18n ? ' in ' + theLang : '')}>
       <FormControlLabel
         style={{ marginRight: 5 }}
         labelPlacement="start"
         control={
           <Switch
             color="primary"
-            checked={!node.isDraft}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-              setDraft(id, !e.target.checked)
-            }
+            checked={!isDraft}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+              setDraft(id, !e.target.checked, theLang);
+            }}
           />
         }
         label={
-          node.isDraft ? (
+          isDraft ? (
             <NonVisibleIcon style={{ marginTop: 5 }} />
           ) : (
             <VisibleIcon style={{ marginTop: 5 }} />
@@ -32,12 +41,4 @@ const DraftSwitch = ({ id, node, setDraft }) => {
   ) : null;
 };
 
-const mapStateToProps = createStructuredSelector({
-  node: Selectors.Editable.node,
-});
-
-const mapDispatchToProps = {
-  setDraft: Actions.Cell.updateCellIsDraft,
-};
-
-export default connect(mapStateToProps, mapDispatchToProps)(DraftSwitch);
+export default DraftSwitch;

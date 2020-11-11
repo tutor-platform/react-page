@@ -14,9 +14,17 @@ import pluginDefault from './service/plugin/default';
 import createStore from './store';
 import { EditableType } from './types/editable';
 import { RootState } from './types/state';
+import { setLang } from './actions/setting';
+import { findNodeInState } from './selector/editable';
+import { createContext } from 'react';
 
-const initialState = () => ({
+export const EditorContext = createContext<Editor>(null);
+
+const initialState = ({ lang }) => ({
   reactPage: {
+    settings: {
+      lang,
+    },
     editables: {
       past: [],
       present: [],
@@ -45,7 +53,11 @@ const update = (editor: Editor) => (editable: EditableType) => {
   } as any);
 };
 
-export interface EditorProps<T extends RootState = RootState> {
+export type Languages = Array<{
+  lang: string;
+  label: string;
+}>;
+export interface CoreEditorProps<T extends RootState = RootState> {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   plugins?: Plugins;
   middleware?: [];
@@ -53,6 +65,8 @@ export interface EditorProps<T extends RootState = RootState> {
   defaultPlugin?: ContentPluginConfig | LayoutPluginConfig;
 
   store?: Store<T>;
+  languages?: Languages;
+  lang?: string;
 }
 
 /**
@@ -67,16 +81,20 @@ class Editor<T extends RootState = RootState> {
 
   trigger: ActionsTypes;
   query = {};
+  languages?: Languages;
 
   constructor({
     plugins,
     middleware = [],
     editables = [],
     defaultPlugin = pluginDefault,
-
     store,
-  }: EditorProps<T> = {}) {
-    this.store = store || createStore(initialState(), middleware);
+    languages = [],
+    lang,
+  }: CoreEditorProps<T> = {}) {
+    this.store =
+      store ||
+      createStore(initialState({ lang: lang || languages[0] }), middleware);
     this.plugins = new PluginService(plugins);
     this.middleware = middleware;
     this.trigger = actions(this.store.dispatch);
@@ -87,9 +105,18 @@ class Editor<T extends RootState = RootState> {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     this.trigger.editable.update = update(this) as any;
 
+    this.languages = languages;
+
     editables.forEach(this.trigger.editable.add);
   }
 
+  public setLang(lang: string) {
+    this.store.dispatch(setLang(lang));
+  }
+
+  /**
+   * @deprecated in order to reduce api surface, this api gets removed in the future. Please file an issue with your use case if you still need it
+   */
   public refreshEditables = () => {
     this.store.getState().reactPage.editables.present?.forEach((editable) => {
       if (!isProduction) {
@@ -101,67 +128,8 @@ class Editor<T extends RootState = RootState> {
     });
   };
 
-  /**
-   * @deprecated in order to reduce the api surface, we will remove this method in the future
-   */
-  public setLayoutPlugins = (plugins: LayoutPluginConfig[] = []) => {
-    console.warn(
-      'in order to reduce the api surface, we will remove setLayoutPlugins in the future'
-    );
-    this.plugins.setLayoutPlugins(plugins);
-    this.refreshEditables();
-  };
-  /**
-   * @deprecated in order to reduce the api surface, we will remove this method in the future
-   */
-  public addLayoutPlugin = (config: LayoutPluginConfig) => {
-    console.warn(
-      'in order to reduce the api surface, we will remove addLayoutPlugin in the future'
-    );
-    this.plugins.addLayoutPlugin(config);
-    this.refreshEditables();
-  };
-  /**
-   * @deprecated in order to reduce the api surface, we will remove this method in the future
-   */
-  public removeLayoutPlugin = (name: string) => {
-    console.warn(
-      'in order to reduce the api surface, we will remove removeLayoutPlugin in the future'
-    );
-    this.plugins.removeLayoutPlugin(name);
-    this.refreshEditables();
-  };
-  /**
-   * @deprecated in order to reduce the api surface, we will remove this method in the future
-   */
-  public setContentPlugins = (plugins: ContentPluginConfig[] = []) => {
-    console.warn(
-      'in order to reduce the api surface, we will remove setContentPlugins in the future'
-    );
-    this.plugins.setContentPlugins(plugins);
-    this.refreshEditables();
-  };
-
-  /**
-   * @deprecated in order to reduce the api surface, we will remove this method in the future
-   */
-  public addContentPlugin = (config: ContentPluginConfig) => {
-    console.warn(
-      'in order to reduce the api surface, we will remove addContentPlugin in the future'
-    );
-    this.plugins.addContentPlugin(config);
-    this.refreshEditables();
-  };
-
-  /**
-   * @deprecated in order to reduce the api surface, we will remove this method in the future
-   */
-  public removeContentPlugin = (name: string) => {
-    console.warn(
-      'in order to reduce the api surface, we will remove removeContentPlugin in the future'
-    );
-    this.plugins.removeContentPlugin(name);
-    this.refreshEditables();
+  public getNode = (editableId: string, nodeId: string) => {
+    return findNodeInState(this.store.getState(), editableId, nodeId);
   };
 }
 

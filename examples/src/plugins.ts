@@ -1,25 +1,3 @@
-/*
- * This file is part of ORY Editor.
- *
- * ORY Editor is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * ORY Editor is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with ORY Editor.  If not, see <http://www.gnu.org/licenses/>.
- *
- * @license LGPL-3.0
- * @copyright 2016-2018 Aeneas Rekkas
- * @author Aeneas Rekkas <aeneas+oss@aeneas.io>
- *
- */
-
 import { Plugins } from '@react-page/core';
 // The background plugin
 import background, { ModeEnum } from '@react-page/plugins-background';
@@ -32,7 +10,7 @@ import divider from '@react-page/plugins-divider';
 import html5video from '@react-page/plugins-html5-video';
 import '@react-page/plugins-html5-video/lib/index.css';
 // The image plugin
-import { imagePlugin } from '@react-page/plugins-image';
+import { imagePlugin, ImageUploadType } from '@react-page/plugins-image';
 import '@react-page/plugins-image/lib/index.css';
 // The spacer plugin
 import spacer from '@react-page/plugins-spacer';
@@ -40,13 +18,13 @@ import '@react-page/plugins-spacer/lib/index.css';
 // The video plugin
 import video from '@react-page/plugins-video';
 import '@react-page/plugins-video/lib/index.css';
-import { ImageUploadType } from '@react-page/ui/lib/ImageUpload/types';
+
 import customContentPlugin from './customContentPlugin';
 import customContentPluginWithListField from './customContentPluginWithListField';
 import customLayoutPlugin from './customLayoutPlugin';
 import customLayoutPluginWithInitialState from './customLayoutPluginWithInitialState';
-import { defaultSlate, reducedSlate } from './slate';
-
+import { defaultSlate, customizedSlate } from './slate';
+import customContentPluginTwitter from './customContentPluginTwitter';
 const fakeImageUploadService: (url: string) => ImageUploadType = (
   defaultUrl
 ) => (file, reportProgress) => {
@@ -71,7 +49,7 @@ const fakeImageUploadService: (url: string) => ImageUploadType = (
 export const plugins: Plugins = {
   content: [
     defaultSlate,
-    reducedSlate,
+    customizedSlate,
     spacer,
     imagePlugin({ imageUpload: fakeImageUploadService('/images/react.png') }),
     video,
@@ -79,6 +57,7 @@ export const plugins: Plugins = {
     html5video,
     customContentPlugin(),
     customContentPluginWithListField(),
+    customContentPluginTwitter(),
   ],
   layout: [
     background({

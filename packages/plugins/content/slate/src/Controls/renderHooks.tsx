@@ -12,7 +12,25 @@ import {
   useComponentNodePlugins,
 } from './pluginHooks';
 import { getTextContents } from '../utils/getTextContent';
+import propisValid from '@emotion/is-prop-valid';
 
+type Data = {
+  [key: string]: unknown;
+};
+const pickNativeProps = (data?: Data): Data => {
+  if (!isObject(data)) {
+    return {};
+  }
+  return Object.keys(data).reduce((acc, key) => {
+    if (propisValid(key)) {
+      return {
+        ...acc,
+        [key]: data[key],
+      };
+    }
+    return acc;
+  }, {});
+};
 export const useRenderElement = (
   {
     plugins,
@@ -33,18 +51,37 @@ export const useRenderElement = (
         componentPlugins.find((plugin) => plugin.type === defaultPluginType);
 
       if (matchingPlugin) {
-        const { Component } = matchingPlugin;
-        Component.displayName = 'SlatePlugin(' + matchingPlugin.type + ')';
+        const { Component, getStyle } = matchingPlugin;
 
+        const style = getStyle ? getStyle(data || {}) : undefined;
+        const baseProps = {
+          children,
+          style,
+        };
+
+        if (typeof Component === 'string' || Component instanceof String) {
+          const nativePropsInData = pickNativeProps(data as Data);
+          // simple component like "p"
+          return (
+            <Component {...attributes} {...baseProps} {...nativePropsInData} />
+          );
+        }
+
+        Component.displayName = 'SlatePlugin(' + matchingPlugin.type + ')';
+        // usefull in certain cases
+        const additionalProps = {
+          childNodes,
+          getTextContents: () => getTextContents(childNodes),
+          useSelected,
+          useFocused,
+        };
         return (
           <Component
+            {...baseProps}
             {...data}
+            // attributes have to be spread in manually because of ref problem
             attributes={attributes}
-            children={children}
-            childNodes={childNodes}
-            getTextContents={() => getTextContents(childNodes)}
-            useSelected={useSelected}
-            useFocused={useFocused}
+            {...additionalProps}
           />
         );
       }
@@ -73,17 +110,30 @@ export const useRenderLeave = (
               (plugin) => plugin.type === type
             );
             if (matchingPlugin) {
-              const { Component } = matchingPlugin;
-              const value = leaveTypes[type]; // usually boolean
-              const props = isObject(value) ? value : {};
+              const { Component, getStyle } = matchingPlugin;
+              const dataRaw = leaveTypes[type]; // usually boolean
+              const data = isObject(dataRaw) ? dataRaw : {};
 
+              const style = getStyle ? getStyle(data) : undefined;
+              if (
+                typeof Component === 'string' ||
+                Component instanceof String
+              ) {
+                const nativePropsInData = pickNativeProps(data as Data);
+                return (
+                  <Component {...nativePropsInData} style={style}>
+                    {el}
+                  </Component>
+                );
+              }
               return (
                 <Component
                   childNodes={[{ text }]}
                   getTextContents={() => [text]}
                   useSelected={useSelected}
                   useFocused={useFocused}
-                  {...props}
+                  style={style}
+                  {...data}
                 >
                   {el}
                 </Component>

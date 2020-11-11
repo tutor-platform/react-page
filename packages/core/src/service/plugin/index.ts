@@ -1,25 +1,3 @@
-/*
- * This file is part of ORY Editor.
- *
- * ORY Editor is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * ORY Editor is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with ORY Editor.  If not, see <http://www.gnu.org/licenses/>.
- *
- * @license LGPL-3.0
- * @copyright 2016-2018 Aeneas Rekkas
- * @author Aeneas Rekkas <aeneas+oss@aeneas.io>
- *
- */
-
 import semver, { satisfies } from 'semver';
 import { v4 } from 'uuid';
 import { ComponetizedCell, EditableType } from '../../types/editable';
@@ -249,41 +227,61 @@ export default class PluginService {
 
   getNewPluginState = (
     found: { plugin: Plugin; pluginWrongVersion?: Plugin },
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    state: any,
+
+    state: unknown,
+    stateI18n: {
+      [lang: string]: unknown;
+    },
     version: string
   ): {
     plugin: Plugin;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    state: any;
+    state: unknown;
+    stateI18n: {
+      [lang: string]: unknown;
+    };
   } => {
+    const getResult = (plugin, shouldMigrate = false) => {
+      // Attempt to migrate
+
+      const transformState = (s) => {
+        if (shouldMigrate) {
+          const migratedState = this.migratePluginState(
+            s,
+            found.pluginWrongVersion,
+            version
+          );
+          return plugin.unserialize(migratedState);
+        }
+        return plugin.unserialize(s);
+      };
+
+      const result = {
+        plugin: plugin,
+        state: transformState(state),
+        stateI18n: stateI18n
+          ? Object.keys(stateI18n).reduce(
+              (acc, lang) => ({
+                ...acc,
+                [lang]: transformState(stateI18n[lang]),
+              }),
+              {}
+            )
+          : undefined,
+      };
+      return result;
+    };
     if (
       !found.pluginWrongVersion ||
       semver.lt(found.pluginWrongVersion.version, version)
     ) {
       // Standard case
-      return {
-        plugin: found.plugin,
-        state: found.plugin.unserialize(state),
-      };
+      return getResult(found.plugin);
     } else {
-      // Attempt to migrate
-      const migratedState = this.migratePluginState(
-        state,
-        found.pluginWrongVersion,
-        version
-      );
-      if (found.pluginWrongVersion && migratedState) {
-        return {
-          plugin: found.pluginWrongVersion,
-          state: found.pluginWrongVersion.unserialize(migratedState),
-        };
+      if (found.pluginWrongVersion) {
+        return getResult(found.pluginWrongVersion, true);
       } else {
-        // Unable to migrate, fallback to missing plugin
-        return {
-          plugin: found.plugin,
-          state: found.plugin.unserialize(state),
-        };
+        return getResult(found.plugin);
       }
     }
   };
@@ -301,24 +299,24 @@ export default class PluginService {
       inline,
       size,
       isDraft,
+      isDraftI18n,
       id,
     } = state;
-    const newState: EditorState = { id, inline, size, isDraft };
+    const newState: EditorState = { id, inline, size, isDraft, isDraftI18n };
 
     const {
       plugin: { name: contentName = null, version: contentVersion = '*' } = {},
-      state: contentState = {},
     } = content || {};
     const {
       plugin: { name: layoutName = null, version: layoutVersion = '*' } = {},
-      state: layoutState = {},
     } = layout || {};
 
     if (contentName) {
       const found = this.findContentPlugin(contentName, contentVersion);
       const newContentState = this.getNewPluginState(
         found,
-        contentState,
+        content.state,
+        content.stateI18n,
         contentVersion
       );
       newState.content = newContentState;
@@ -328,7 +326,8 @@ export default class PluginService {
       const found = this.findLayoutPlugin(layoutName, layoutVersion);
       const newLayoutState = this.getNewPluginState(
         found,
-        layoutState,
+        layout.state,
+        layout.stateI18n,
         layoutVersion
       );
       newState.layout = newLayoutState;
@@ -354,16 +353,26 @@ export default class PluginService {
       layout,
       inline,
       isDraft,
+      isDraftI18n,
       size,
       id,
     } = state;
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const newState: any = { id, inline, size, isDraft };
+    const newState: any = { id, inline, size, isDraft, isDraftI18n };
     if (content && content.plugin) {
       newState.content = {
         plugin: { name: content.plugin.name, version: content.plugin.version },
         state: content.plugin.serialize(content.state),
+        stateI18n: content.stateI18n
+          ? Object.keys(content.stateI18n).reduce(
+              (acc, lang) => ({
+                ...acc,
+                [lang]: content.plugin.serialize(content.stateI18n[lang]),
+              }),
+              {}
+            )
+          : undefined,
       };
     }
 
@@ -371,6 +380,15 @@ export default class PluginService {
       newState.layout = {
         plugin: { name: layout.plugin.name, version: layout.plugin.version },
         state: layout.plugin.serialize(layout.state),
+        stateI18n: layout.stateI18n
+          ? Object.keys(layout.stateI18n).reduce(
+              (acc, lang) => ({
+                ...acc,
+                [lang]: layout.plugin.serialize(layout.stateI18n[lang]),
+              }),
+              {}
+            )
+          : undefined,
       };
     }
 

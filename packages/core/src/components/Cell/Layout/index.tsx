@@ -1,25 +1,3 @@
-/*
- * This file is part of ORY Editor.
- *
- * ORY Editor is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * ORY Editor is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with ORY Editor.  If not, see <http://www.gnu.org/licenses/>.
- *
- * @license LGPL-3.0
- * @copyright 2016-2018 Aeneas Rekkas
- * @author Aeneas Rekkas <aeneas+oss@aeneas.io>
- *
- */
-
 import * as React from 'react';
 import { findDOMNode } from 'react-dom';
 import { bindActionCreators, Dispatch } from 'redux';
@@ -37,8 +15,11 @@ import {
 } from '../../../types/editable';
 import Row from '../../Row';
 import scrollIntoViewWithOffset from '../utils/scrollIntoViewWithOffset';
+import { Selectors } from '../../../selector';
+import { getI18nState } from '../Content';
 
-export type LayoutProps = ComponetizedCell & SimplifiedModesProps;
+export type LayoutProps = ComponetizedCell &
+  SimplifiedModesProps & { lang: string };
 // TODO clean me up #157
 class Layout extends React.PureComponent<LayoutProps> {
   ref: HTMLDivElement;
@@ -50,6 +31,7 @@ class Layout extends React.PureComponent<LayoutProps> {
       node: { focused: is, scrollToCell: scrollToCellIs, focusSource },
     } = nextProps;
     const {
+      lang,
       editable,
       id,
       node: {
@@ -61,20 +43,21 @@ class Layout extends React.PureComponent<LayoutProps> {
             version = 'N/A',
           } = {},
           state = {},
+          stateI18n = null,
         } = {},
         focused,
       },
-      updateCellContent,
     } = nextProps;
 
     // FIXME this is really shitty because it will break when the state changes before the blur comes through, see #157
     const pass: LayoutPluginProps = {
       editable,
       id,
-      state,
+      lang,
+      state: getI18nState({ lang, state, stateI18n }),
       focused: Boolean(this.props.isEditMode && focused),
       readOnly: !this.props.isEditMode,
-      onChange: updateCellContent,
+      onChange: this.onChange,
       name,
       version,
       remove: this.props.removeCell,
@@ -88,7 +71,7 @@ class Layout extends React.PureComponent<LayoutProps> {
 
     // Basically we check if the focus state changed and if yes, we execute the callback handler from the plugin, that
     // can set some side effects.
-    if (!scrollToCellWas && scrollToCellIs) {
+    if (scrollToCellIs && scrollToCellWas !== scrollToCellIs) {
       if (this.ref) {
         scrollIntoViewWithOffset(this.ref, 100);
       }
@@ -107,11 +90,13 @@ class Layout extends React.PureComponent<LayoutProps> {
   };
 
   onChange = (state) => {
-    this.props.updateCellLayout(state);
+    this.props.updateCellLayout(state, this.props.lang);
   };
   render() {
     const {
       id,
+      lang,
+
       node: { rows = [], layout, focused },
       editable,
       ancestors = [],
@@ -119,7 +104,7 @@ class Layout extends React.PureComponent<LayoutProps> {
       allowResizeInEditMode,
       editModeResizeHandle,
     } = this.props;
-    const { plugin, state } = layout;
+    const { plugin, state, stateI18n } = layout;
     const { Component, version, name, text } = plugin;
     const { focusCell, blurCell, removeCell } = this.props;
 
@@ -150,7 +135,8 @@ class Layout extends React.PureComponent<LayoutProps> {
       >
         <Component
           id={id}
-          state={state}
+          lang={lang}
+          state={getI18nState({ lang, state, stateI18n })}
           focus={focusCell}
           blur={blurCell}
           editable={editable}
@@ -179,7 +165,11 @@ class Layout extends React.PureComponent<LayoutProps> {
   }
 }
 
-const mapStateToProps = createStructuredSelector({ isEditMode, isPreviewMode });
+const mapStateToProps = createStructuredSelector({
+  isEditMode,
+  isPreviewMode,
+  lang: Selectors.Setting.getLang,
+});
 
 const mapDispatchToProps = (
   dispatch: Dispatch<UpdateCellLayoutAction>,

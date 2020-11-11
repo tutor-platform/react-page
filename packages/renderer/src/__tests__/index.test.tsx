@@ -1,25 +1,3 @@
-/*
- * This file is part of ORY Editor.
- *
- * ORY Editor is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * ORY Editor is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with ORY Editor.  If not, see <http://www.gnu.org/licenses/>.
- *
- * @license LGPL-3.0
- * @copyright 2016-2018 Aeneas Rekkas
- * @author Aeneas Rekkas <aeneas+oss@aeneas.io>
- *
- */
-
 import {
   ContentPluginProps,
   EditableType,
@@ -187,7 +165,7 @@ describe('HTMLRenderer', () => {
         it('should pass', () => {
           expect(wrapper.html()).toEqual(
             // tslint:disable-next-line:max-line-length
-            '<div class="ory-cell ory-cell-sm-12 ory-cell-xs-12"><div class="ory-cell-inner ory-cell-leaf"><div data-gramm="false" data-slate-editor="true" data-slate-node="value" style="outline:none;white-space:pre-wrap;word-wrap:break-word"><p style="text-align:center"><span data-slate-node="text"><span data-slate-leaf="true"><span data-slate-string="true">Asdfg</span></span></span></p></div></div></div>'
+            '<div class="ory-cell ory-cell-sm-12 ory-cell-xs-12"><div class="ory-cell-inner ory-cell-leaf"><div data-gramm="false" data-slate-editor="true" data-slate-node="value" style="outline:none;white-space:pre-wrap;word-wrap:break-word"><p data-slate-node="element" style="text-align:center"><span data-slate-node="text"><span data-slate-leaf="true"><span data-slate-string="true">Asdfg</span></span></span></p></div></div></div>'
           );
         });
       });

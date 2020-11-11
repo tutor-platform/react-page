@@ -16,11 +16,12 @@ import {
   CELL_UPDATE_CONTENT,
   CELL_UPDATE_IS_DRAFT,
   CELL_UPDATE_LAYOUT,
+  CELL_INSERT_AT_END,
 } from '../../actions/cell';
 import { Cell, createCell, createRow, Row } from '../../types/editable';
 import { CellHoverAction } from './../../actions/cell/drag';
 import { isHoveringThis } from './helper/hover';
-import { computeRow } from './helper/inline';
+
 import {
   flatten,
   optimizeCell,
@@ -57,22 +58,45 @@ export const cell = (s: Cell, a: AnyAction): Cell =>
         case CELL_UPDATE_IS_DRAFT:
           if (action.id === state.id) {
             // If this cell is being focused, set the data
-            return { ...reduce(), isDraft: action.isDraft };
+            const reduced = reduce();
+            if (action.lang) {
+              return {
+                ...reduced,
+                isDraftI18n: {
+                  ...reduced.isDraftI18n,
+                  [action.lang]: action.isDraft,
+                },
+              };
+            } else {
+              return {
+                ...reduced,
+                isDraft: action.isDraft,
+              };
+            }
           }
           return { ...reduce(), focused: false, focusSource: null };
         case CELL_UPDATE_CONTENT:
           if (action.id === state.id) {
             // If this cell is being updated, set the data
             const reduced = reduce();
+            const emptyValue = action.state == null;
+            if (action.lang && emptyValue) {
+              delete reduced.content.stateI18n?.[action.lang];
+            }
             return {
               ...reduced,
               content: {
-                ...(state.content || {}),
-                state: {
-                  ...(reduced?.content?.state ?? {}),
-
-                  ...action.state,
-                },
+                ...(state.content ?? {}),
+                ...(action.lang
+                  ? {
+                      stateI18n: {
+                        ...(reduced.content.stateI18n ?? {}),
+                        ...(!emptyValue ? { [action.lang]: action.state } : {}),
+                      },
+                    }
+                  : {
+                      state: action.state,
+                    }),
               },
             };
           }
@@ -82,14 +106,24 @@ export const cell = (s: Cell, a: AnyAction): Cell =>
           if (action.id === state.id) {
             // If this cell is being updated, set the data
             const reduced = reduce();
+            const emptyValue = action.state == null;
+            if (action.lang && emptyValue) {
+              delete reduced.layout.stateI18n?.[action.lang];
+            }
             return {
               ...reduced,
               layout: {
-                ...(state.layout || {}),
-                state: {
-                  ...(reduced?.layout?.state ?? {}),
-                  ...action.state,
-                },
+                ...(state.layout ?? {}),
+                ...(action.lang
+                  ? {
+                      stateI18n: {
+                        ...(reduced.layout.stateI18n ?? {}),
+                        ...(!emptyValue ? { [action.lang]: action.state } : {}),
+                      },
+                    }
+                  : {
+                      state: action.state,
+                    }),
               },
             };
           }
@@ -101,14 +135,14 @@ export const cell = (s: Cell, a: AnyAction): Cell =>
             return {
               ...reduce(),
               focused: true,
-              scrollToCell: action.scrollToCell,
+              scrollToCell: action.scrollToCell ? new Date().getTime() : null,
               focusSource: action.source,
             };
           }
           return {
             ...reduce(),
-            focused: false,
-            scrollToCell: false,
+            focused: null,
+            scrollToCell: null,
             focusSource: null,
           };
 
@@ -120,7 +154,7 @@ export const cell = (s: Cell, a: AnyAction): Cell =>
           return reduce();
 
         case CELL_BLUR_ALL:
-          return { ...reduce(), focused: false };
+          return { ...reduce(), focused: false, scrollToCell: null };
 
         case CELL_DRAG_HOVER:
           if (isHoveringThis(state, action as CellHoverAction)) {
@@ -197,7 +231,7 @@ export const cells = (s: Cell[] = [], a: AnyAction): Cell[] =>
         case CELL_RESIZE:
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
           return resizeCells(state.map(inner(cell, action)), action as any);
-
+        case CELL_INSERT_AT_END:
         case CELL_INSERT_BELOW:
         case CELL_INSERT_ABOVE:
           return state
@@ -286,59 +320,57 @@ export const cells = (s: Cell[] = [], a: AnyAction): Cell[] =>
   );
 
 export const row = (s: Row, a: AnyAction): Row =>
-  computeRow(
-    optimizeRow(
-      ((state: Row, action: AnyAction): Row => {
-        const reduce = () => ({
-          ...state,
-          hover: null,
-          cells: cells(state.cells, action),
-        });
+  optimizeRow(
+    ((state: Row, action: AnyAction): Row => {
+      const reduce = () => ({
+        ...state,
+        hover: null,
+        cells: cells(state.cells, action),
+      });
 
-        switch (action.type) {
-          case CELL_INSERT_LEFT_OF:
-            if (!isHoveringThis(state, action as CellHoverAction)) {
-              return reduce();
-            }
-            return {
-              ...state,
-              hover: null,
-              cells: cells(
-                [
-                  { ...action.item, id: action.ids.item, inline: null },
-                  ...state.cells,
-                ],
-                { ...action, hover: null }
-              ),
-            };
-
-          case CELL_INSERT_RIGHT_OF:
-            if (!isHoveringThis(state, action as CellHoverAction)) {
-              return reduce();
-            }
-            return {
-              ...state,
-              hover: null,
-              cells: cells(
-                [
-                  ...state.cells,
-                  { ...action.item, id: action.ids.item, inline: null },
-                ],
-                { ...action, hover: null }
-              ),
-            };
-
-          case CELL_DRAG_HOVER:
-            if (isHoveringThis(state, action as CellHoverAction)) {
-              return { ...reduce(), hover: action.position };
-            }
+      switch (action.type) {
+        case CELL_INSERT_LEFT_OF:
+          if (!isHoveringThis(state, action as CellHoverAction)) {
             return reduce();
+          }
+          return {
+            ...state,
+            hover: null,
+            cells: cells(
+              [
+                { ...action.item, id: action.ids.item, inline: null },
+                ...state.cells,
+              ],
+              { ...action, hover: null }
+            ),
+          };
 
-          default:
+        case CELL_INSERT_RIGHT_OF:
+          if (!isHoveringThis(state, action as CellHoverAction)) {
             return reduce();
-        }
-      })(s, a)
-    )
+          }
+          return {
+            ...state,
+            hover: null,
+            cells: cells(
+              [
+                ...state.cells,
+                { ...action.item, id: action.ids.item, inline: null },
+              ],
+              { ...action, hover: null }
+            ),
+          };
+
+        case CELL_DRAG_HOVER:
+          if (isHoveringThis(state, action as CellHoverAction)) {
+            return { ...reduce(), hover: action.position };
+          }
+          return reduce();
+
+        default:
+          return reduce();
+      }
+    })(s, a)
   );
 
 export const rows = (s: Row[] = [], a: AnyAction): Row[] =>
@@ -390,6 +422,15 @@ export const rows = (s: Row[] = [], a: AnyAction): Row[] =>
             )
             .reduce(flatten, [])
             .map(inner(row, action));
+        case CELL_INSERT_AT_END:
+          return [
+            ...state,
+            {
+              ...createRow(),
+              cells: [{ ...action.item, id: action.ids.item, inline: null }],
+              id: action.ids.others[1],
+            },
+          ];
 
         default:
           return reduce();

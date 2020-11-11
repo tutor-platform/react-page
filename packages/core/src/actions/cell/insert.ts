@@ -1,24 +1,3 @@
-/*
- * This file is part of ORY Editor.
- *
- * ORY Editor is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * ORY Editor is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with ORY Editor.  If not, see <http://www.gnu.org/licenses/>.
- *
- * @license LGPL-3.0
- * @copyright 2016-2018 Aeneas Rekkas
- * @author Aeneas Rekkas <aeneas+oss@aeneas.io>
- *
- */
 import { Action } from 'redux';
 import { v4 } from 'uuid';
 import { Cell, NewIds } from '../../types/editable';
@@ -32,7 +11,8 @@ export const CELL_INSERT_LEFT_OF = 'CELL_INSERT_LEFT_OF';
 export const CELL_INSERT_RIGHT_OF = 'CELL_INSERT_RIGHT_OF';
 export const CELL_INSERT_INLINE_LEFT = 'CELL_INSERT_INLINE_LEFT';
 export const CELL_INSERT_INLINE_RIGHT = 'CELL_INSERT_INLINE_RIGHT';
-export const CELL_DUPLICATE = 'CELL_DUPLICATE';
+
+export const CELL_INSERT_AT_END = 'CELL_INSERT_AT_END';
 
 export interface InsertAction extends Action {
   ts: Date;
@@ -125,6 +105,8 @@ export const insertCellLeftInline = insert(CELL_INSERT_INLINE_LEFT);
  */
 export const insertCellRightInline = insert(CELL_INSERT_INLINE_RIGHT);
 
+export const insertCellAtTheEnd = insert(CELL_INSERT_AT_END);
+
 // set new ids recursivly
 const newIds = ({ id, ...item }: Partial<Cell>) => {
   return {
@@ -147,8 +129,7 @@ const newIds = ({ id, ...item }: Partial<Cell>) => {
       : undefined,
   };
 };
-export const duplicateCell = (item) => (dispatch) =>
-  dispatch(insertCellBelow(newIds(item), item));
+export const duplicateCell = (item) => insertCellBelow(newIds(item), item);
 
 export const insertActions = {
   insertCellRightInline,
@@ -158,5 +139,6 @@ export const insertActions = {
   insertCellAbove,
   insertCellBelow,
   duplicateCell,
+  insertCellAtTheEnd,
   insert,
 };

@@ -1,25 +1,3 @@
-/*
- * This file is part of ORY Editor.
- *
- * ORY Editor is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * ORY Editor is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with ORY Editor.  If not, see <http://www.gnu.org/licenses/>.
- *
- * @license LGPL-3.0
- * @copyright 2016-2018 Aeneas Rekkas
- * @author Aeneas Rekkas <aeneas+oss@aeneas.io>
- *
- */
-
 import classNames from 'classnames';
 import * as React from 'react';
 import { bindActionCreators, Dispatch } from 'redux';
@@ -31,7 +9,7 @@ import {
   ResizeCellAction,
 } from '../../actions/cell';
 import { connect } from '../../reduxConnect';
-import { RootState } from '../../selector';
+import { RootState, Selectors } from '../../selector';
 import {
   isEditMode,
   isInsertMode,
@@ -69,7 +47,7 @@ const stopClick = (_isEditMode: boolean) => (
   e: React.MouseEvent<HTMLDivElement>
 ) => (_isEditMode ? e.stopPropagation() : null);
 
-type CellProps = ComponetizedCell & SimplifiedModesProps;
+type CellProps = ComponetizedCell & SimplifiedModesProps & { lang: string };
 
 class Cell extends React.PureComponent<CellProps> {
   render() {
@@ -78,9 +56,18 @@ class Cell extends React.PureComponent<CellProps> {
       rowWidth,
       rowHeight,
       updateDimensions,
-      node: { inline, resizable, hasInlineNeighbour, focused, isDraft },
+      lang,
+      node: {
+        inline,
+        resizable,
+        hasInlineNeighbour,
+        focused,
+        isDraft,
+        isDraftI18n,
+      },
     } = this.props;
-    if (isDraft && this.props.isPreviewMode) {
+    const isDraftInLang = isDraftI18n?.[lang] ?? isDraft;
+    if (isDraftInLang && this.props.isPreviewMode) {
       return null;
     }
     return (
@@ -89,7 +76,7 @@ class Cell extends React.PureComponent<CellProps> {
           'ory-cell-has-inline-neighbour': hasInlineNeighbour,
           [`ory-cell-inline-${inline || ''}`]: inline,
           'ory-cell-focused': focused,
-          'ory-cell-is-draft': isDraft,
+          'ory-cell-is-draft': isDraftInLang,
           'ory-cell-resizing-overlay': this.props.isResizeMode,
           'ory-cell-bring-to-front':
             !this.props.isResizeMode && !this.props.isLayoutMode && inline, // inline must not be active for resize/layout
@@ -128,6 +115,7 @@ const mapStateToProps = createStructuredSelector({
   isLayoutMode,
   config: editableConfig,
   node: purifiedNode,
+  lang: Selectors.Setting.getLang,
   rawNode: (state: RootState, props: NodeProps) => () => node(state, props),
 });
 

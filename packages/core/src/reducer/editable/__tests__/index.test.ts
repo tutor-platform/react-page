@@ -1,30 +1,8 @@
-/*
- * This file is part of ORY Editor.
- *
- * ORY Editor is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * ORY Editor is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with ORY Editor.  If not, see <http://www.gnu.org/licenses/>.
- *
- * @license LGPL-3.0
- * @copyright 2016-2018 Aeneas Rekkas
- * @author Aeneas Rekkas <aeneas+oss@aeneas.io>
- *
- */
-
 import { applyMiddleware, combineReducers, createStore } from 'redux';
 import thunk from 'redux-thunk';
 import * as actions from '../../../actions/cell/index';
 import { cellOrder } from '../helper/order';
-import { decorate } from '../helper/tree';
+import { setAllSizesAndOptimize } from '../helper/setAllSizesAndOptimize';
 import { rawEditableReducer } from '../index';
 
 const walker = ({ cells = [], rows = [], hover = null, ...other }) => {
@@ -40,7 +18,7 @@ const walker = ({ cells = [], rows = [], hover = null, ...other }) => {
   };
 };
 
-const _cells = (state) => decorate(state).map(walker);
+const _cells = (state) => setAllSizesAndOptimize(state).map(walker);
 
 const simulateDispatch = (currentState, action) => {
   const reducer = combineReducers({ editable: rawEditableReducer });
@@ -108,11 +86,12 @@ export const createCell = (
 export const createLayoutCell = (
   id: string,
   name: string,
-  state: { foo: number; bar?: number },
+  state: { foo?: number; bar?: number },
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   rows: any[],
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  additional?: any
+  additional?: any,
+  stateI18n?: { [lang: string]: State }
 ) => {
   const cell = createCell(id, null, additional);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -127,6 +106,10 @@ export const createLayoutCell = (
     layout.state = state;
   }
 
+  if (stateI18n) {
+    layout.stateI18n = stateI18n;
+  }
+
   if (rows) {
     cell.rows = rows;
   }
@@ -137,17 +120,19 @@ export const createLayoutCell = (
   };
 };
 
+type State = { foo?: number; bar?: number };
 export const createContentCell = (
   id: string,
   name: string,
-  state?: { foo: number; bar?: number },
+  state?: State,
   additional?: {
     hover?: string | boolean;
     size?: number;
     inline?: string;
     focusSource?: string;
     focused?: boolean;
-  }
+  },
+  stateI18n?: { [lang: string]: State }
 ) => {
   const cell = createCell(id, null, additional);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -160,6 +145,9 @@ export const createContentCell = (
 
   if (state) {
     content.state = state;
+  }
+  if (stateI18n) {
+    content.stateI18n = stateI18n;
   }
 
   return {
@@ -182,7 +170,6 @@ export const createRow = (id: string, cells: any[], additional: any = {}) => {
   }
 
   return {
-    hasInlineChildren: false,
     ...row,
     ...additional,
   };
@@ -273,12 +260,54 @@ test('cell update content', () => {
 
   const expectedState = createEditable(
     'editable',
-    _cells([createContentCell('0', 'foo', { bar: 1, foo: 1 })])
+    _cells([createContentCell('0', 'foo', { bar: 1 })])
   );
 
   runCase(currentState, action, expectedState);
 });
 
+test('cell update content with language', () => {
+  const currentState = createEditable('editable', [
+    createContentCell('0', 'foo', { foo: 1 }),
+  ]);
+
+  const action = actions.updateCellContent('0')({ bar: 1 }, 'de');
+
+  const expectedState = createEditable(
+    'editable',
+    _cells([
+      createContentCell('0', 'foo', { foo: 1 }, undefined, {
+        de: { bar: 1 },
+      }),
+    ])
+  );
+
+  runCase(currentState, action, expectedState);
+});
+
+test('cell update content with language when there is already another translation', () => {
+  const currentState = createEditable('editable', [
+    createContentCell('0', 'foo', { foo: 1 }, undefined, {
+      en: {
+        bar: 2,
+      },
+    }),
+  ]);
+
+  const action = actions.updateCellContent('0')({ bar: 1 }, 'de');
+
+  const expectedState = createEditable(
+    'editable',
+    _cells([
+      createContentCell('0', 'foo', { foo: 1 }, undefined, {
+        de: { bar: 1 },
+        en: { bar: 2 },
+      }),
+    ])
+  );
+
+  runCase(currentState, action, expectedState);
+});
 test('cell update layout', () => {
   const currentState = createEditable('editable', [
     createLayoutCell('0', 'foo', { foo: 1 }, [
@@ -291,7 +320,7 @@ test('cell update layout', () => {
   const expectedState = createEditable(
     'editable',
     _cells([
-      createLayoutCell('0', 'foo', { foo: 1, bar: 1 }, [
+      createLayoutCell('0', 'foo', { bar: 1 }, [
         createRow('2', [createContentCell('1', 'bar')]),
       ]),
     ])
@@ -392,7 +421,7 @@ test('cell resize inline cell (1)', () => {
             createContentCell('000', 'foo', null, { inline: 'left', size: 4 }),
             createContentCell('001', 'bar', null, { size: 12 }),
           ],
-          { hasInlineChildren: true }
+          {}
         ),
       ]),
     ])
@@ -564,9 +593,11 @@ test('anti-recursion test: cell insert below of two level', () => {
         [
           createRow('0000000', [createContentCell('00000000', 'foo')]),
           createRow('0000001', [createContentCell('00000010', 'bar')]),
-          createRow('id-others-3', [createContentCell('id-item', 'myPlugin')], {
-            hasInlineChildren: false,
-          }),
+          createRow(
+            'id-others-3',
+            [createContentCell('id-item', 'myPlugin')],
+            {}
+          ),
         ],
         {
           focusSource: '',
@@ -638,9 +669,11 @@ test('cell insert below of cell - one level deep (row)', () => {
     _cells([
       createCell('0', [
         createRow('id-others-1', [createContentCell('000', 'foo')]),
-        createRow('id-others-2', [createContentCell('id-item', 'myPlugin')], {
-          hasInlineChildren: false,
-        }),
+        createRow(
+          'id-others-2',
+          [createContentCell('id-item', 'myPlugin')],
+          {}
+        ),
         createRow('01', [createContentCell('010', 'bar')]),
       ]),
     ])
@@ -742,12 +775,12 @@ test('cell insert above cell', () => {
     'editable',
     _cells([
       createCell('0', [
-        createRow('id-others-1', [createContentCell('id-item', 'myPlugin')], {
-          hasInlineChildren: false,
-        }),
-        createRow('id-others-2', [createContentCell('id-others-3', 'foo')], {
-          hasInlineChildren: false,
-        }),
+        createRow(
+          'id-others-1',
+          [createContentCell('id-item', 'myPlugin')],
+          {}
+        ),
+        createRow('id-others-2', [createContentCell('id-others-3', 'foo')], {}),
         createRow('01', [createContentCell('010', 'bar')]),
       ]),
     ])
@@ -779,12 +812,12 @@ test('cell insert below cell', () => {
     'editable',
     _cells([
       createCell('0', [
-        createRow('id-others-1', [createContentCell('id-others-2', 'foo')], {
-          hasInlineChildren: false,
-        }),
-        createRow('id-others-3', [createContentCell('id-item', 'myPlugin')], {
-          hasInlineChildren: false,
-        }),
+        createRow('id-others-1', [createContentCell('id-others-2', 'foo')], {}),
+        createRow(
+          'id-others-3',
+          [createContentCell('id-item', 'myPlugin')],
+          {}
+        ),
         createRow('01', [createContentCell('010', 'bar')]),
       ]),
     ])
@@ -816,12 +849,8 @@ test('cell move below another cell', () => {
     'editable',
     _cells([
       createCell('0', [
-        createRow('id-others-1', [createContentCell('id-others-2', 'bar')], {
-          hasInlineChildren: false,
-        }),
-        createRow('id-others-3', [createContentCell('id-item', 'foo')], {
-          hasInlineChildren: false,
-        }),
+        createRow('id-others-1', [createContentCell('id-others-2', 'bar')], {}),
+        createRow('id-others-3', [createContentCell('id-item', 'foo')], {}),
       ]),
     ])
   );
@@ -858,19 +887,15 @@ test('cell insert inline cell left of', () => {
           createCell(
             'id-cell',
             [
-              createRow(
-                'id-others-1',
-                [
-                  createContentCell('id-item', 'myPlugin', null, {
-                    inline: 'left',
-                  }),
-                  createContentCell('id-others-2', 'foo', null, {
-                    inline: null,
-                  }),
-                  // FIXME: the row with id i00 has inline children!
-                ],
-                { hasInlineChildren: true }
-              ),
+              createRow('id-others-1', [
+                createContentCell('id-item', 'myPlugin', null, {
+                  inline: 'left',
+                }),
+                createContentCell('id-others-2', 'foo', null, {
+                  inline: null,
+                }),
+                // FIXME: the row with id i00 has inline children!
+              ]),
             ],
             {
               focusSource: '',
@@ -911,14 +936,10 @@ test('move inline cell from left to right', () => {
     'editable',
     _cells([
       createCell('0', [
-        createRow(
-          'id-others-1',
-          [
-            createContentCell('id-item', 'foo', null, { inline: 'right' }),
-            createContentCell('id-others-2', 'bar', null, { inline: null }),
-          ],
-          { hasInlineChildren: true }
-        ),
+        createRow('id-others-1', [
+          createContentCell('id-item', 'foo', null, { inline: 'right' }),
+          createContentCell('id-others-2', 'bar', null, { inline: null }),
+        ]),
       ]),
     ])
   );
@@ -952,14 +973,10 @@ test('cell insert cell left of inline row', () => {
     _cells([
       createContentCell('id-item', 'myPlugin', null, { size: 6 }),
       createCell('id-others-1', [
-        createRow(
-          '00',
-          [
-            createContentCell('000', 'foo', null, { inline: 'left' }),
-            createContentCell('001', 'bar', null),
-          ],
-          { hasInlineChildren: true }
-        ),
+        createRow('00', [
+          createContentCell('000', 'foo', null, { inline: 'left' }),
+          createContentCell('001', 'bar', null),
+        ]),
       ]),
     ])
   );
@@ -992,14 +1009,10 @@ test('cell insert below inline row', () => {
     'editable',
     _cells([
       createCell('0', [
-        createRow(
-          'id-others-1',
-          [
-            createContentCell('000', 'foo', null, { inline: 'left' }),
-            createContentCell('001', 'bar', null),
-          ],
-          { hasInlineChildren: true }
-        ),
+        createRow('id-others-1', [
+          createContentCell('000', 'foo', null, { inline: 'left' }),
+          createContentCell('001', 'bar', null),
+        ]),
         createRow('id-others-2', [
           createContentCell('id-item', 'myPlugin', null, { size: 6 }),
         ]),
@@ -1037,14 +1050,10 @@ test('cell insert below inline row - 2 level', () => {
       createCell(
         'id-cell',
         [
-          createRow(
-            '00',
-            [
-              createContentCell('000', 'foo', null, { inline: 'left' }),
-              createContentCell('001', 'bar', null),
-            ],
-            { hasInlineChildren: true }
-          ),
+          createRow('00', [
+            createContentCell('000', 'foo', null, { inline: 'left' }),
+            createContentCell('001', 'bar', null),
+          ]),
           createRow('id-others-3', [
             createContentCell('id-item', 'myPlugin', null, { size: 6 }),
           ]),

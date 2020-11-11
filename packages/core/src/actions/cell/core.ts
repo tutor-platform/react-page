@@ -1,25 +1,3 @@
-/*
- * This file is part of ORY Editor.
- *
- * ORY Editor is free software: you can redistribute it and/or modify
- * it under the terms of the GNU Lesser General Public License as published by
- * the Free Software Foundation, either version 3 of the License, or
- * (at your option) any later version.
- *
- * ORY Editor is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU Lesser General Public License for more details.
- *
- * You should have received a copy of the GNU Lesser General Public License
- * along with ORY Editor.  If not, see <http://www.gnu.org/licenses/>.
- *
- * @license LGPL-3.0
- * @copyright 2016-2018 Aeneas Rekkas
- * @author Aeneas Rekkas <aeneas+oss@aeneas.io>
- *
- */
-
 import { Action } from 'redux';
 import uuid from 'uuid';
 import { NewIds } from '../../types/editable';
@@ -42,12 +20,14 @@ export interface UpdateCellContentAction extends Action {
   ts: Date;
   id: string;
   state: EditorState;
+  lang?: string;
 }
 
 export interface UpdateCellIsDraftAction extends Action {
   ts: Date;
   id: string;
   isDraft: boolean;
+  lang?: string;
 }
 /**
  * An action creator for updating a cell's content data.
@@ -61,12 +41,14 @@ export interface UpdateCellIsDraftAction extends Action {
  * @return {Action}
  */
 export const updateCellContent = (id: string) => (
-  state: EditorState = {}
+  state: EditorState = {},
+  lang?: string
 ): UpdateCellContentAction => ({
   type: CELL_UPDATE_CONTENT,
   ts: new Date(),
   id,
   state,
+  lang,
 });
 
 /**
@@ -82,18 +64,21 @@ export const updateCellContent = (id: string) => (
  */
 export const updateCellIsDraft = (
   id: string,
-  isDraft = false
+  isDraft = false,
+  lang: string = null
 ): UpdateCellIsDraftAction => ({
   type: CELL_UPDATE_IS_DRAFT,
   ts: new Date(),
   id,
   isDraft,
+  lang,
 });
 
 export interface UpdateCellLayoutAction extends Action {
   ts: Date;
   id: string;
   state: EditorState;
+  lang?: string;
 }
 /**
  * An action creator for updating a cell's layout data.
@@ -107,12 +92,14 @@ export interface UpdateCellLayoutAction extends Action {
  * @return {Action}
  */
 export const updateCellLayout = (id: string) => (
-  state: EditorState = {}
+  state: EditorState = {},
+  lang?: string
 ): UpdateCellLayoutAction => ({
   type: CELL_UPDATE_LAYOUT,
   ts: new Date(),
   id,
   state,
+  lang,
 });
 
 export interface RemoveCellAction extends Action {

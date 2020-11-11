@@ -5,11 +5,12 @@ import {
   LayoutPluginConfig,
   lazyLoad,
   Plugins,
+  Languages,
+  DisplayModes,
+  SimplifiedModesProps,
 } from '@react-page/core';
 import { HTMLRenderer } from '@react-page/renderer';
 import React from 'react';
-import { SimplifiedModesProps } from '@react-page/core/src/types/editable';
-import { DisplayModes } from '@react-page/core/src/actions/display';
 
 const EditableEditor = lazyLoad(() => import('./EditableEditor'));
 
@@ -19,9 +20,13 @@ export type EditorProps = {
   dndBackend?: DndBackend;
   value?: EditableType | null;
   onChange?: (v: EditableType) => void;
+  onChangeLang?: (l: string) => void;
   readOnly?: boolean;
   defaultDisplayMode?: DisplayModes;
   blurGateDisabled?: boolean;
+  languages?: Languages;
+  lang?: string;
+  hideEditorSidebar?: boolean;
 } & SimplifiedModesProps;
 
 const Editor: React.FC<EditorProps> = ({
@@ -33,10 +38,11 @@ const Editor: React.FC<EditorProps> = ({
   dndBackend,
   blurGateDisabled,
   defaultDisplayMode,
+  lang,
   ...rest
 }) =>
   readOnly ? (
-    <HTMLRenderer state={value} plugins={plugins} />
+    <HTMLRenderer state={value} plugins={plugins} lang={lang} />
   ) : (
     <EditableEditor
       plugins={plugins}
@@ -46,6 +52,7 @@ const Editor: React.FC<EditorProps> = ({
       dndBackend={dndBackend}
       blurGateDisabled={blurGateDisabled}
       defaultDisplayMode={defaultDisplayMode}
+      lang={lang}
       {...rest}
     />
   );
